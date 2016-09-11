@@ -1,28 +1,17 @@
-Pimatic TP Link Smartplug Plugin
+Pimatic Harmony Hub Plugin
 =======================
 
-This plugin adds the functionality to control TP Link Smartplug HS100 and HS110 via pimatic
+This plugin adds the functionality to control various devices via the Harmony Hub through pimatic
 
 Example config.json entries:
 ```json
   "plugins": [
     {
-      "plugin": "tplink-smartplug"
+      "plugin": "harmonyhub"
     }
   ],
-
-"devices": [
-  {
-    "id": "tplink-plug-test",
-    "name": "My Smartplug",
-    "class": "TPlinkHS100",
-    "ip": "192.168.XXX.XXX"
-  },
-  {
-    "id": "tplink-plug-test2",
-    "name": "My Smartplug with measurement",
-    "class": "TPlinkHS110",
-    "ip": "192.168.XXX.XXX"
-  }
-]
 ```
+
+HarmonyHubPowerSwitch devices not yet tested.
+
+HarmonyHubButtonsDevice config will follow but autodiscovery is already working and the easiest way.
