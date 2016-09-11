@@ -1,0 +1,35 @@
+{
+  "name": "pimatic-harmonyhub",
+  "description": "This plugin adds the functionality to control various devices via the Harmony Hub through pimatic",
+  "author": {
+    "name": "Lukas Reinhart",
+    "email": "reinhart.lukas+npm@gmail.com"
+  },
+  "main": "harmonyhub",
+  "license": "GPL-2.0",
+  "files": [
+    "harmonyhub.coffee",
+    "README.md",
+    "harmonyhub-config-schema.coffee",
+    "device-config-schema.coffee"
+  ],
+  "version": "0.0.2",
+  "homepage": "https://github.com/thexperiments/pimatic-harmonyhub",
+  "private": false,
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/thexperiments/pimatic-harmonyhub.git"
+  },
+  "configSchema": "harmonyhub-config-schema.coffee",
+  "dependencies": {
+    "harmonyhubjs-client": "^1.1.8",
+    "harmonyhubjs-discover": "^1.0.2"
+  },
+  "peerDependencies": {
+    "pimatic": ">=0.8.0 <1.0.0"
+  },
+  "engines": {
+    "node": ">0.8.x",
+    "npm": ">1.1.x"
+  }
+}
