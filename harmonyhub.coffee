@@ -39,7 +39,8 @@ module.exports = (env) ->
       # get the device config schemas
       deviceConfigDef = require("./device-config-schema")
       env.logger.info("Starting pimatic-harmonyhub plugin")
-      env.logger.logDebug = true
+      #env.logger.logDebug = true
+      @hubInstancePool = []
 
       @framework.deviceManager.registerDeviceClass("HarmonyHubPowerSwitch", {
         configDef: deviceConfigDef.HarmonyHubPowerSwitch,
@@ -115,19 +116,38 @@ module.exports = (env) ->
 
         setTimeout stopDiscovery, 20000
 
-    sendHarmonyHubCommand: (hubInstance, command, commandType, deviceId) =>
-      @hubInstance = hubInstance
-      action = 
-        command: command
-        type: commandType
-        deviceId: "#{deviceId}"
+    sendHarmonyHubCommand: (hubIP, command, commandType, deviceId) =>
+      @hubIP = hubIP
+      @command = command
+      @commandType = commandType
+      @deviceId = deviceId
 
-      env.logger.debug("sending command #{JSON.stringify(action)} to #{hubInstance.toString()}")
+      @getHubInstance(@hubIP).then () =>
+        action = 
+          command: @command
+          type: @commandType
+          deviceId: "#{@deviceId}"
 
-      @encodedAction = JSON.stringify(action).replace(/\:/g, '::')
+        env.logger.debug("sending command #{JSON.stringify(action)} to #{@hubInstance.toString()}")
 
-      requestPromise = hubInstance.send('holdAction', 'action=' + @encodedAction + ':status=press').then () =>
-        @hubInstance.send('holdAction', 'action=' + @encodedAction + ':status=release')
+        @encodedAction = JSON.stringify(action).replace(/\:/g, '::')
+
+        requestPromise = @hubInstance.send('holdAction', 'action=' + @encodedAction + ':status=press').then () =>
+          @hubInstance.send('holdAction', 'action=' + @encodedAction + ':status=release')
+
+        return requestPromise
+
+    getHubInstance: (@hubIP) ->
+      if @hubIP of @hubInstancePool
+        env.logger.debug("hub instance found for #{@hubIP}")
+        @hubInstance = @hubInstancePool[@hubIP]
+        requestPromise = Promise.resolve(true)
+
+      else
+        env.logger.debug("no hub instance found yet for #{@hubIP}")
+        requestPromise = HarmonyHubClient(@hubIP).then (hubInstance) =>
+          @hubInstance = hubInstance
+          @hubInstancePool[@hubIP] = hubInstance
 
       return requestPromise
 
@@ -153,9 +173,6 @@ module.exports = (env) ->
       @offCommand = @config.offCommand
       @deviceId = @config.deviceId
 
-      @hubInstance
-      HarmonyHubClient(@hubIP).then (hubInstance) =>
-        @hubInstance = hubInstance
       super()
 
     destroy: () ->
@@ -169,7 +186,7 @@ module.exports = (env) ->
     changeStateTo: (state) ->
       env.logger.debug "setting state to #{state}"
       command = if state then onCommand else offCommand
-      @requestPromise = @Plugin.sendHarmonyHubCommand(@hubInstance, command, @commandType, @deviceId).then(() =>
+      @requestPromise = @Plugin.sendHarmonyHubCommand(@hubIP, command, @commandType, @deviceId).then(() =>
         env.logger.debug "setting state success"
         @_setState(state)
       ).catch((error) =>
@@ -186,10 +203,6 @@ module.exports = (env) ->
       @buttons = @config.buttons
       @deviceId = @config.deviceId
 
-      @hubInstance
-      HarmonyHubClient(@hubIP).then (hubInstance) =>
-        @hubInstance = hubInstance
-
       super(@config)
       
 
@@ -205,7 +218,7 @@ module.exports = (env) ->
           @emit 'button', b.id
 
           command = b.command
-          @requestPromise = @plugin.sendHarmonyHubCommand(@hubInstance, command, @commandType, @deviceId).then(() =>
+          @requestPromise = @plugin.sendHarmonyHubCommand(@hubIP, command, @commandType, @deviceId).then(() =>
             env.logger.debug "sending command state success"
           ).catch((error) =>
             env.logger.error("Unable to send command to device: " + error.toString())
