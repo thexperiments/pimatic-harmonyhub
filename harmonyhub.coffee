@@ -116,6 +116,7 @@ module.exports = (env) ->
         setTimeout stopDiscovery, 20000
 
     sendHarmonyHubCommand: (hubInstance, command, commandType, deviceId) =>
+      @hubInstance = hubInstance
       action = 
         command: command
         type: commandType
@@ -123,9 +124,12 @@ module.exports = (env) ->
 
       env.logger.debug("sending command #{JSON.stringify(action)} to #{hubInstance.toString()}")
 
-      encodedAction = JSON.stringify(action).replace(/\:/g, '::')
+      @encodedAction = JSON.stringify(action).replace(/\:/g, '::')
 
-      return hubInstance.send('holdAction', 'action=' + encodedAction + ':status=press')
+      requestPromise = hubInstance.send('holdAction', 'action=' + @encodedAction + ':status=press').then () =>
+        @hubInstance.send('holdAction', 'action=' + @encodedAction + ':status=release')
+
+      return requestPromise
 
     _generateDeviceId: (prefix, lastId = null) ->
       start = 1
