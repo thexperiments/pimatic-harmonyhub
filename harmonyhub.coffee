@@ -40,6 +40,7 @@ module.exports = (env) ->
       deviceConfigDef = require("./device-config-schema")
       env.logger.info("Starting pimatic-harmonyhub plugin")
       #env.logger.logDebug = true
+
       @hubInstancePool = []
 
       @framework.deviceManager.registerDeviceClass("HarmonyHubPowerSwitch", {
@@ -138,7 +139,7 @@ module.exports = (env) ->
         return requestPromise
 
     getHubInstance: (@hubIP) ->
-      if @hubIP of @hubInstancePool
+      if @hubInstancePool[@hubIP]
         env.logger.debug("hub instance found for #{@hubIP}")
         @hubInstance = @hubInstancePool[@hubIP]
         requestPromise = Promise.resolve(true)
@@ -147,6 +148,11 @@ module.exports = (env) ->
         env.logger.debug("no hub instance found yet for #{@hubIP}")
         requestPromise = HarmonyHubClient(@hubIP).then (hubInstance) =>
           @hubInstance = hubInstance
+          @hubInstance._xmppClient.on 'offline', ()=>
+            env.logger.debug("hub instance for #{@hubIP} went offline, recreating")
+            @hubInstancePool[@hubIP] = null
+            @getHubInstance(@hubIP)
+
           @hubInstancePool[@hubIP] = hubInstance
 
       return requestPromise
