@@ -13,7 +13,7 @@
     "harmonyhub-config-schema.coffee",
     "device-config-schema.coffee"
   ],
-  "version": "0.0.4",
+  "version": "0.0.5",
   "homepage": "https://github.com/thexperiments/pimatic-harmonyhub",
   "private": false,
   "repository": {
