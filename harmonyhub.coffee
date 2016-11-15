@@ -55,6 +55,12 @@ module.exports = (env) ->
           return new HarmonyHubButtonsDevice(config, @)
       })
 
+      @framework.deviceManager.registerDeviceClass("HarmonyHubActivitiesButtonsDevice", {
+        configDef: deviceConfigDef.HarmonyHubActivitiesButtonsDevice,
+        createCallback: (config, lastState) =>
+          return new HarmonyHubActivitiesButtonsDevice(config, @)
+      })
+
       @framework.deviceManager.on 'discover', () =>
         env.logger.debug("Starting discovery")
         @framework.deviceManager.discoverMessage(
@@ -69,6 +75,7 @@ module.exports = (env) ->
 
           HarmonyHubClient(@hubIP).then (hubInstance) =>
             @hubIP = @hubIP
+
             env.logger.debug("Getting available commands for hub@#{@hubIP}")
             hubInstance.getAvailableCommands().then (commands) =>
               devices = commands.device
@@ -110,6 +117,32 @@ module.exports = (env) ->
                     'pimatic-harmonyhub', "#{deviceConfig.name}", deviceConfig
                   )
 
+            env.logger.debug("Getting available activites for hub@#{@hubIP}")
+            hubInstance.getActivities().then (activities) =>
+              
+              env.logger.debug("received acivities: #{JSON.stringify(activities)} ")
+              deviceConfig = 
+                    class: "HarmonyHubActivitiesButtonsDevice"
+                    name: "Acitvities on #{@hubIP}"
+                    id: "activities-#{@hubIP.replace(".","-")}"
+                    hubIP: @hubIP
+              buttonsArray = []
+
+              for currentActivity in activities
+                env.logger.debug("found activity #{currentActivity.label} on hub@#{@hubIP}")
+                buttonConfig = 
+                  id : "activities-button-#{currentActivity.label.replace(" ","-")}"
+                  text : currentActivity.label
+                  activityId : currentActivity.id
+                buttonsArray.push(buttonConfig)
+
+              deviceConfig.buttons = buttonsArray
+
+              #notify about the discovered device
+              @framework.deviceManager.discoveredDevice(
+                'pimatic-harmonyhub', "#{deviceConfig.name}", deviceConfig
+              )
+
         @HarmonyHubDiscoverInstance.start()
 
         stopDiscovery = () =>
@@ -135,6 +168,18 @@ module.exports = (env) ->
 
         requestPromise = @hubInstance.send('holdAction', 'action=' + @encodedAction + ':status=press').then () =>
           @hubInstance.send('holdAction', 'action=' + @encodedAction + ':status=release')
+
+        return requestPromise
+
+    startHarmonyHubActivity: (hubIP, activityId) =>
+      @hubIP = hubIP
+      @activityId = activityId
+
+      @getHubInstance(@hubIP).then () =>
+
+        env.logger.debug("sending activity #{@activityId}")
+
+        requestPromise = @hubInstance.startActivity(@activityId)
 
         return requestPromise
 
@@ -197,8 +242,8 @@ module.exports = (env) ->
         @_setState(state)
       ).catch((error) =>
         env.logger.error("Unable to set power state of device: " + error.toString())
-        #return Promise.reject
       ) 
+
 
   class HarmonyHubButtonsDevice extends env.devices.ButtonsDevice
     constructor: (@config, @plugin) ->
@@ -231,8 +276,38 @@ module.exports = (env) ->
           )           
           return @requestPromise
       throw new Error("No button with the id #{buttonId} found")
-      command = if state then onCommand else offCommand
 
+
+  class HarmonyHubActivitiesButtonsDevice extends env.devices.ButtonsDevice
+    constructor: (@config, @plugin) ->
+      @name = @config.name
+      @id = @config.id
+      @hubIP = @config.hubIP
+      @buttons = @config.buttons
+
+      super(@config)
+      
+
+    destroy: () ->
+      @requestPromise.cancel() if @requestPromise?
+      super()
+
+    buttonPressed: (buttonId) ->
+
+      for b in @config.buttons
+        if b.id is buttonId
+          @_lastPressedButton = b.id
+          @emit 'button', b.id
+
+          activityId = b.activityId
+          @requestPromise = @plugin.startHarmonyHubActivity(@hubIP, activityId).then(() =>
+            env.logger.debug "starting activity command state success"
+          ).catch((error) =>
+            env.logger.error("Unable to send start activity to device: " + error.toString())
+          )           
+          return @requestPromise
+      throw new Error("No button with the id #{buttonId} found")
+      
 
   # ###Finally
   # Create a instance of my plugin

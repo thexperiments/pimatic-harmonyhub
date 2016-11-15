@@ -7,4 +7,8 @@ module.exports = {
       description: "Default keepalive interval (ms) (currently not used)"
       type: "integer"
       default: 30000
+    debug:
+      description: "Flag for activating debug output"
+      type: "boolean"
+      default: false
 }

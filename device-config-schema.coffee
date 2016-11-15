@@ -52,5 +52,28 @@ module.exports = {
             command:
               description: "Command to send"
               type: "string"
+  },
+  HarmonyHubActivitiesButtonsDevice: {
+    title: "HarmonyHubActivitiesButtonsDevice config options"
+    type: "object"
+    properties:
+      hubIP:
+        description: "IP of the Harmony Hub"
+        type: "string"
+      buttons:
+        description: "Activitiy buttons to display"
+        type: "array"
+        default: []
+        format: "table"
+        items:
+          type: "object"
+          properties:
+            id:
+              type: "string"
+            text:
+              type: "string"
+            activityId:
+              description: "ID of the activity to trigger (-1 = off)"
+              type: "string"
   }
 }
