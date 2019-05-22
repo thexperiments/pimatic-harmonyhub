@@ -236,8 +236,8 @@ module.exports = (env) ->
 
     changeStateTo: (state) ->
       env.logger.debug "setting state to #{state}"
-      command = if state then onCommand else offCommand
-      @requestPromise = @Plugin.sendHarmonyHubCommand(@hubIP, command, @commandType, @deviceId).then(() =>
+      command = if state then @onCommand else @offCommand
+      @requestPromise = @plugin.sendHarmonyHubCommand(@hubIP, command, @commandType, @deviceId).then(() =>
         env.logger.debug "setting state success"
         @_setState(state)
       ).catch((error) =>
