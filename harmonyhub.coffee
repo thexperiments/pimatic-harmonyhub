@@ -61,6 +61,12 @@ module.exports = (env) ->
           return new HarmonyHubActivitiesButtonsDevice(config, @)
       })
 
+      @framework.deviceManager.registerDeviceClass("HarmonyHubActivitiesRunning", {
+        configDef: deviceConfigDef.HarmonyHubActivitiesRunning,
+        createCallback: (config, lastState) =>
+          return new HarmonyHubActivitiesRunning(config, @)
+      })
+
       @framework.deviceManager.on 'discover', () =>
         env.logger.debug("Starting discovery")
         @framework.deviceManager.discoverMessage(
@@ -313,6 +319,18 @@ module.exports = (env) ->
           )           
           return @requestPromise
       throw new Error("No button with the id #{buttonId} found")
+
+  class HarmonyHubActivitiesRunning extends env.devices.PresenceSensor
+    constructor: (@config, @plugin) ->
+      @name = @config.name
+      @id = @config.id
+      @hubIP = @config.hubIP
+
+      super(@config)
+      
+    destroy: () ->
+      @requestPromise.cancel() if @requestPromise?
+      super()
       
 
   # ###Finally
