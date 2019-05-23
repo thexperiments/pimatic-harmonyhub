@@ -150,6 +150,12 @@ module.exports = (env) ->
 
         setTimeout stopDiscovery, 20000
 
+    registerStateDigestHandler: (hubIP, handler) =>
+      env.logger.debug("eigener code #{hubIP}")
+      @getHubInstance(hubIP).then () =>
+        @hubInstance.on 'stateDigest', handler
+        env.logger.debug("state digest handler registred")
+
     sendHarmonyHubCommand: (hubIP, command, commandType, deviceId) =>
       @hubIP = hubIP
       @command = command
