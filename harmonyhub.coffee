@@ -100,7 +100,7 @@ module.exports = (env) ->
                   deviceConfig = 
                     class: "HarmonyHubButtonsDevice"
                     name: "#{currentDevice.label}(#{currentControlGroup.name})"
-                    id: "#{currentDevice.label.replace(" ","-").toLowerCase()}-#{currentControlGroup.name.replace(" ","-").toLowerCase()}"
+                    id: "#{currentDevice.label.replace(/ /g,"-").toLowerCase()}-#{currentControlGroup.name.replace(" ","-").toLowerCase()}"
                     hubIP: @hubIP
                     deviceId: currentDevice.id
                     commandType: ""
@@ -109,7 +109,7 @@ module.exports = (env) ->
                     deviceAction = JSON.parse(currentDeviceFunction.action)
                     #fill the buttons with the different functions
                     buttonConfig = 
-                      id : "#{currentDevice.label.replace(" ","-").toLowerCase()}-#{currentControlGroup.name.replace(" ","-").toLowerCase()}-#{currentDeviceFunction.name.replace(" ","-").toLowerCase()}"
+                      id : "#{currentDevice.label.replace(/ /g,"-").toLowerCase()}-#{currentControlGroup.name.replace(" ","-").toLowerCase()}-#{currentDeviceFunction.name.replace(" ","-").toLowerCase()}"
                       text : currentDeviceFunction.label
                       command : deviceAction.command
                     buttonsArray.push(buttonConfig)
@@ -130,14 +130,14 @@ module.exports = (env) ->
               deviceConfig = 
                     class: "HarmonyHubActivitiesButtonsDevice"
                     name: "Acitvities on #{@hubIP}"
-                    id: "activities-#{@hubIP.replace(".","-").toLowerCase()}"
+                    id: "activities-#{@hubIP.replace(/\./g,"-").toLowerCase()}"
                     hubIP: @hubIP
               buttonsArray = []
 
               for currentActivity in activities
                 env.logger.debug("found activity #{currentActivity.label} on hub@#{@hubIP}")
                 buttonConfig = 
-                  id : "activities-button-#{currentActivity.label.replace(" ","-").toLowerCase()}"
+                  id : "activities-button-#{currentActivity.label.replace(/ /g,"-").toLowerCase()}"
                   text : currentActivity.label
                   activityId : currentActivity.id
                 buttonsArray.push(buttonConfig)
