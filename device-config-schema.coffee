@@ -83,5 +83,21 @@ module.exports = {
       hubIP:
         description: "IP of the Harmony Hub"
         type: "string"
+      activities:
+        description: "Activities that shall be watched"
+        type: "array"
+        default: []
+        items:
+          type: "object"
+          properties:
+            id:
+              type:"string"
+            text:
+              type: "string"
+              default: "Activity name"
+            activityId:
+              description: "ID of the activity that shall be watched (-1 = off)"
+              type: "string"
+              default: "-1"
   }
 }

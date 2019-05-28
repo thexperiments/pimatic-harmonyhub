@@ -100,7 +100,7 @@ module.exports = (env) ->
                   deviceConfig = 
                     class: "HarmonyHubButtonsDevice"
                     name: "#{currentDevice.label}(#{currentControlGroup.name})"
-                    id: "#{currentDevice.label.replace(" ","-").toLowerCase()}-#{currentControlGroup.name.replace(" ","-").toLowerCase()}"
+                    id: "#{currentDevice.label.replace(/ /g,"-").toLowerCase()}-#{currentControlGroup.name.replace(/ /g,"-").toLowerCase()}"
                     hubIP: @hubIP
                     deviceId: currentDevice.id
                     commandType: ""
@@ -109,7 +109,7 @@ module.exports = (env) ->
                     deviceAction = JSON.parse(currentDeviceFunction.action)
                     #fill the buttons with the different functions
                     buttonConfig = 
-                      id : "#{currentDevice.label.replace(" ","-").toLowerCase()}-#{currentControlGroup.name.replace(" ","-").toLowerCase()}-#{currentDeviceFunction.name.replace(" ","-").toLowerCase()}"
+                      id : "#{currentDevice.label.replace(/ /g,"-").toLowerCase()}-#{currentControlGroup.name.replace(/ /g,"-").toLowerCase()}-#{currentDeviceFunction.name.replace(/ /g,"-").toLowerCase()}"
                       text : currentDeviceFunction.label
                       command : deviceAction.command
                     buttonsArray.push(buttonConfig)
@@ -130,14 +130,14 @@ module.exports = (env) ->
               deviceConfig = 
                     class: "HarmonyHubActivitiesButtonsDevice"
                     name: "Acitvities on #{@hubIP}"
-                    id: "activities-#{@hubIP.replace(".","-").toLowerCase()}"
+                    id: "activities-#{@hubIP.replace(/\./g,"-").toLowerCase()}"
                     hubIP: @hubIP
               buttonsArray = []
 
               for currentActivity in activities
                 env.logger.debug("found activity #{currentActivity.label} on hub@#{@hubIP}")
                 buttonConfig = 
-                  id : "activities-button-#{currentActivity.label.replace(" ","-").toLowerCase()}"
+                  id : "activities-button-#{currentActivity.label.replace(/ /g,"-").toLowerCase()}"
                   text : currentActivity.label
                   activityId : currentActivity.id
                 buttonsArray.push(buttonConfig)
@@ -149,6 +149,13 @@ module.exports = (env) ->
                 'pimatic-harmonyhub', "#{deviceConfig.name}", deviceConfig
               )
 
+            env.logger.debug("getting activity watcher device")
+            hubInstance.getActivities().then (activities) =>
+                env.logger.debug('received activities: #{JSON.stringify(activities)} ')
+                deviceConfig =
+                      class: "HarmonyHubActivitiesRunning"
+                      name: ""
+
         @HarmonyHubDiscoverInstance.start()
 
         stopDiscovery = () =>
@@ -157,7 +164,6 @@ module.exports = (env) ->
         setTimeout stopDiscovery, 20000
 
     registerStateDigestHandler: (hubIP, handler) =>
-      env.logger.debug("eigener code #{hubIP}")
       @getHubInstance(hubIP).then () =>
         @hubInstance.on 'stateDigest', handler
         env.logger.debug("state digest handler registred")
@@ -321,16 +327,43 @@ module.exports = (env) ->
       throw new Error("No button with the id #{buttonId} found")
 
   class HarmonyHubActivitiesRunning extends env.devices.PresenceSensor
-    constructor: (@config, @plugin) ->
+
+    actions:
+      changePresenceTo:
+        params:
+          presence:
+            type: "boolean"
+
+    constructor: (@config, @plugin, lastState) ->
       @name = @config.name
       @id = @config.id
       @hubIP = @config.hubIP
+      @activities = @config.activities
+      @_presence = lastState?.presence?.value or off
 
       super(@config)
+
+      @plugin.registerStateDigestHandler(@hubIP, (stateDigest) =>
+        #env.logger.debug(JSON.stringify(stateDigest))
+        env.logger.debug("ID: #{stateDigest.activityId}")
+        #@changePresenceTo(on)
+        for act in @activities
+          #0 = Hub is off, 1 = Activity is starting, 2 = Activity is started,
+          #3 = Hub is turning off
+          if stateDigest.activityId is "-1"
+            @changePresenceTo(off)
+          else if act.activityId.toString() is stateDigest.activityId
+            env.logger.debug("HIT!!!!(#{@name}) - ID: #{act.activityId}")
+            @changePresenceTo(on)
+      )
       
     destroy: () ->
       @requestPromise.cancel() if @requestPromise?
       super()
+
+    changePresenceTo: (presence) =>
+      @_setPresence(presence)
+      return Promise.resolve()
       
 
   # ###Finally
