@@ -82,72 +82,74 @@ module.exports = (env) ->
           HarmonyHubClient(@hubIP).then (hubInstance) =>
             @hubIP = @hubIP
 
-            env.logger.debug("Getting available commands for hub@#{@hubIP}")
-            hubInstance.getAvailableCommands().then (commands) =>
-              devices = commands.device
-              env.logger.debug("looking for device commands on hub@#{@hubIP}")
-              for currentDevice in devices
-                controlGroups = currentDevice.controlGroup
-                env.logger.debug("looking for control groups on hub@#{@hubIP}")
-                for currentControlGroup in controlGroups
-                  #create a Buttons device for each ControlGroup
-                  deviceFunctions = currentControlGroup.function
-                  buttonsArray = []
-                  commandType = ""
+            if @config.scanforbuttonsdevices is true
+              env.logger.debug("Getting available commands for hub@#{@hubIP}")
+              hubInstance.getAvailableCommands().then (commands) =>
+                devices = commands.device
+                env.logger.debug("looking for device commands on hub@#{@hubIP}")
+                for currentDevice in devices
+                  controlGroups = currentDevice.controlGroup
+                  env.logger.debug("looking for control groups on hub@#{@hubIP}")
+                  for currentControlGroup in controlGroups
+                    #create a Buttons device for each ControlGroup
+                    deviceFunctions = currentControlGroup.function
+                    buttonsArray = []
+                    commandType = ""
 
-                  env.logger.debug("found controll group #{currentControlGroup.name} on hub@#{@hubIP}")
+                    env.logger.debug("found controll group #{currentControlGroup.name} on hub@#{@hubIP}")
 
-                  deviceConfig = 
-                    class: "HarmonyHubButtonsDevice"
-                    name: "#{currentDevice.label}(#{currentControlGroup.name})"
-                    id: "#{currentDevice.label.replace(/ /g,"-").toLowerCase()}-#{currentControlGroup.name.replace(" ","-").toLowerCase()}"
-                    hubIP: @hubIP
-                    deviceId: currentDevice.id
-                    commandType: ""
+                    deviceConfig = 
+                      class: "HarmonyHubButtonsDevice"
+                      name: "#{currentDevice.label}(#{currentControlGroup.name})"
+                      id: "#{currentDevice.label.replace(/ /g,"-").toLowerCase()}-#{currentControlGroup.name.replace(" ","-").toLowerCase()}"
+                      hubIP: @hubIP
+                      deviceId: currentDevice.id
+                      commandType: ""
 
-                  for currentDeviceFunction in deviceFunctions
-                    deviceAction = JSON.parse(currentDeviceFunction.action)
-                    #fill the buttons with the different functions
-                    buttonConfig = 
-                      id : "#{currentDevice.label.replace(/ /g,"-").toLowerCase()}-#{currentControlGroup.name.replace(" ","-").toLowerCase()}-#{currentDeviceFunction.name.replace(" ","-").toLowerCase()}"
-                      text : currentDeviceFunction.label
-                      command : deviceAction.command
-                    buttonsArray.push(buttonConfig)
+                    for currentDeviceFunction in deviceFunctions
+                      deviceAction = JSON.parse(currentDeviceFunction.action)
+                      #fill the buttons with the different functions
+                      buttonConfig = 
+                        id : "#{currentDevice.label.replace(/ /g,"-").toLowerCase()}-#{currentControlGroup.name.replace(" ","-").toLowerCase()}-#{currentDeviceFunction.name.replace(" ","-").toLowerCase()}"
+                        text : currentDeviceFunction.label
+                        command : deviceAction.command
+                      buttonsArray.push(buttonConfig)
 
-                    deviceConfig.commandType = deviceAction.type
+                      deviceConfig.commandType = deviceAction.type
 
-                  deviceConfig.buttons = buttonsArray
+                    deviceConfig.buttons = buttonsArray
 
-                  #notify about the discovered device
-                  @framework.deviceManager.discoveredDevice(
-                    'pimatic-harmonyhub', "#{deviceConfig.name}", deviceConfig
-                  )
+                    #notify about the discovered device
+                    @framework.deviceManager.discoveredDevice(
+                      'pimatic-harmonyhub', "#{deviceConfig.name}", deviceConfig
+                    )
 
-            env.logger.debug("Getting available activites for hub@#{@hubIP}")
-            hubInstance.getActivities().then (activities) =>
-              
-              env.logger.debug("received acivities: #{JSON.stringify(activities)} ")
-              deviceConfig = 
-                    class: "HarmonyHubActivitiesButtonsDevice"
-                    name: "Acitvities on #{@hubIP}"
-                    id: "activities-#{@hubIP.replace(/\./g,"-").toLowerCase()}"
-                    hubIP: @hubIP
-              buttonsArray = []
+            if @config.scanforactivitybuttonsdevices is true
+              env.logger.debug("Getting available activites for hub@#{@hubIP}")
+              hubInstance.getActivities().then (activities) =>
+                
+                env.logger.debug("received acivities: #{JSON.stringify(activities)} ")
+                deviceConfig = 
+                      class: "HarmonyHubActivitiesButtonsDevice"
+                      name: "Acitvities on #{@hubIP}"
+                      id: "activities-#{@hubIP.replace(/\./g,"-").toLowerCase()}"
+                      hubIP: @hubIP
+                buttonsArray = []
 
-              for currentActivity in activities
-                env.logger.debug("found activity #{currentActivity.label} on hub@#{@hubIP}")
-                buttonConfig = 
-                  id : "activities-button-#{currentActivity.label.replace(/ /g,"-").toLowerCase()}"
-                  text : currentActivity.label
-                  activityId : currentActivity.id
-                buttonsArray.push(buttonConfig)
+                for currentActivity in activities
+                  env.logger.debug("found activity #{currentActivity.label} on hub@#{@hubIP}")
+                  buttonConfig = 
+                    id : "activities-button-#{currentActivity.label.replace(/ /g,"-").toLowerCase()}"
+                    text : currentActivity.label
+                    activityId : currentActivity.id
+                  buttonsArray.push(buttonConfig)
 
-              deviceConfig.buttons = buttonsArray
+                deviceConfig.buttons = buttonsArray
 
-              #notify about the discovered device
-              @framework.deviceManager.discoveredDevice(
-                'pimatic-harmonyhub', "#{deviceConfig.name}", deviceConfig
-              )
+                #notify about the discovered device
+                @framework.deviceManager.discoveredDevice(
+                  'pimatic-harmonyhub', "#{deviceConfig.name}", deviceConfig
+                )
 
         @HarmonyHubDiscoverInstance.start()
 
