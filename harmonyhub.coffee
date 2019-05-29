@@ -24,6 +24,8 @@ module.exports = (env) ->
   HarmonyHubClient = require 'harmonyhubjs-client'
   HarmonyHubDiscover = require 'harmonyhubjs-discover'
 
+  delay = (ms, func) -> setTimeout func, ms
+
   class HarmonyHub extends env.plugins.Plugin
 
     # ####init()
@@ -42,6 +44,7 @@ module.exports = (env) ->
       #env.logger.logDebug = true
 
       @hubInstancePool = []
+      @hubStateListeners = {}
 
       @framework.deviceManager.registerDeviceClass("HarmonyHubPowerSwitch", {
         configDef: deviceConfigDef.HarmonyHubPowerSwitch,
@@ -74,7 +77,7 @@ module.exports = (env) ->
         )
 
         @HarmonyHubDiscoverInstance = new HarmonyHubDiscover(61991)
-        
+
         @HarmonyHubDiscoverInstance.on 'online', (hub) =>
           @hubIP = hub.ip
           env.logger.debug("Discovered hub@#{@hubIP}")
@@ -158,12 +161,6 @@ module.exports = (env) ->
 
         setTimeout stopDiscovery, 20000
 
-    registerStateDigestHandler: (hubIP, handler) =>
-      env.logger.debug("eigener code #{hubIP}")
-      @getHubInstance(hubIP).then () =>
-        @hubInstance.on 'stateDigest', handler
-        env.logger.debug("state digest handler registred")
-
     sendHarmonyHubCommand: (hubIP, command, commandType, deviceId) =>
       @hubIP = hubIP
       @command = command
@@ -196,23 +193,52 @@ module.exports = (env) ->
         requestPromise = @hubInstance.startActivity(@activityId)
 
         return requestPromise
+    
+    getCurrentActivity: (hubIP) =>
+      @getHubInstance(hubIP).then () =>
+        return @hubInstance.getCurrentActivity()
 
-    getHubInstance: (@hubIP) ->
-      if @hubInstancePool[@hubIP]
-        env.logger.debug("hub instance found for #{@hubIP}")
-        @hubInstance = @hubInstancePool[@hubIP]
+    registerStateListener: (hubIP, activityId, callback) =>
+      @hubStateListeners[activityId] = callback
+      env.logger.debug("state listener registered")
+
+    handleStateDigest: (stateDigest) =>
+      env.logger.debug("recieved stateDigest")
+      activityId = stateDigest.activityId
+      activityStatus = stateDigest.activityStatus
+
+      if (activityStatus == 2)
+        for k, v of @hubStateListeners
+          v(activityId)
+      if (activityStatus == 0)
+        for k, v of @hubStateListeners
+          v("-1")
+
+    getHubInstance: (hubIP) ->
+      if (@pendingConnection)
+        env.logger.debug("pending on #{hubIP}")
+        return new Promise (resolve) =>
+          delay 200, () => resolve(@getHubInstance(hubIP))
+
+      if @hubInstancePool[hubIP]
+        env.logger.debug("hub instance found for #{hubIP}")
+        @hubInstance = @hubInstancePool[hubIP]
         requestPromise = Promise.resolve(true)
 
       else
-        env.logger.debug("no hub instance found yet for #{@hubIP}")
-        requestPromise = HarmonyHubClient(@hubIP).then (hubInstance) =>
+        env.logger.debug("no hub instance found yet for #{hubIP}")
+        @pendingConnection = true
+        requestPromise = HarmonyHubClient(hubIP).then (hubInstance) =>
           @hubInstance = hubInstance
+          @hubInstance.on("stateDigest", @handleStateDigest.bind(this))
+          env.logger.debug("binding to stateDigest handler")
           @hubInstance._xmppClient.on 'offline', ()=>
-            env.logger.debug("hub instance for #{@hubIP} went offline, recreating")
-            @hubInstancePool[@hubIP] = null
-            @getHubInstance(@hubIP)
+            env.logger.debug("hub instance for #{hubIP} went offline, recreating")
+            @hubInstancePool[hubIP] = null
+            @getHubInstance(hubIP)
 
-          @hubInstancePool[@hubIP] = hubInstance
+          @hubInstancePool[hubIP] = hubInstance
+          @pendingConnection = false
 
       return requestPromise
 
@@ -233,30 +259,55 @@ module.exports = (env) ->
       @name = @config.name
       @id = @config.id
       @hubIP = @config.hubIP
-      @commandType = @config.commandType
-      @onCommand = @config.onCommand
-      @offCommand = @config.offCommand
-      @deviceId = @config.deviceId
+      @activityId = @config.activityId
+
+      @plugin.registerStateListener @hubIP, @activityId, @onStartActivityFinished.bind(this)
 
       super()
+
+    onStartActivityFinished: (startedActivityId) ->
+      env.logger.debug "handling startActivityFinished"
+      newState = startedActivityId == @activityId
+      
+      if @_state is newState then return
+
+      env.logger.debug "setting state to #{newState}"
+      @_setState(newState)
 
     destroy: () ->
       @requestPromise.cancel() if @requestPromise?
       super()
 
     getState: () ->
-      #not currently implemented
-      return Promise.resolve @_state
+      return @plugin.getCurrentActivity(@hubIP)
+        .then (result) =>
+          @_state = result == @activityId
+          env.logger.debug("current activity is #{result} at #{@name}")
+          return @_state
+
 
     changeStateTo: (state) ->
       env.logger.debug "setting state to #{state}"
-      command = if state then @onCommand else @offCommand
-      @requestPromise = @plugin.sendHarmonyHubCommand(@hubIP, command, @commandType, @deviceId).then(() =>
-        env.logger.debug "setting state success"
-        @_setState(state)
-      ).catch((error) =>
-        env.logger.error("Unable to set power state of device: " + error.toString())
-      ) 
+
+      if @_state is state then return Promise.resolve()
+
+      if !state
+        @requestPromise = @plugin.startHarmonyHubActivity(@hubIP, "-1").then(() =>
+          env.logger.debug "setting state success"
+          @_setState(state)
+        )
+      else
+        @requestPromise = @plugin.startHarmonyHubActivity(@hubIP, @activityId).then(() =>
+          env.logger.debug "setting state success"
+          @_setState(state)
+        )
+      # command = if state then @onCommand else offCommand
+      # @requestPromise = @Plugin.sendHarmonyHubCommand(@hubIP, command, @commandType, @deviceId).then(() =>
+      #   env.logger.debug "setting state success"
+      #   @_setState(state)
+      # ).catch((error) =>
+      #   env.logger.error("Unable to set power state of device: " + error.toString())
+      # ) 
 
 
   class HarmonyHubButtonsDevice extends env.devices.ButtonsDevice
@@ -300,7 +351,7 @@ module.exports = (env) ->
       @buttons = @config.buttons
 
       super(@config)
-      
+    
 
     destroy: () ->
       @requestPromise.cancel() if @requestPromise?
