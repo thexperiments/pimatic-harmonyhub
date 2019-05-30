@@ -44,7 +44,7 @@ module.exports = (env) ->
       #env.logger.logDebug = true
 
       @hubInstancePool = []
-      @hubStateListeners = {}
+      @hubStateListeners = []
 
       @framework.deviceManager.registerDeviceClass("HarmonyHubPowerSwitch", {
         configDef: deviceConfigDef.HarmonyHubPowerSwitch,
@@ -64,10 +64,10 @@ module.exports = (env) ->
           return new HarmonyHubActivitiesButtonsDevice(config, @)
       })
 
-      @framework.deviceManager.registerDeviceClass("HarmonyHubActivitiesRunning", {
-        configDef: deviceConfigDef.HarmonyHubActivitiesRunning,
+      @framework.deviceManager.registerDeviceClass("HarmonyHubActivitiesPresence", {
+        configDef: deviceConfigDef.HarmonyHubActivitiesPresence,
         createCallback: (config, lastState) =>
-          return new HarmonyHubActivitiesRunning(config, @)
+          return new HarmonyHubActivitiesPresence(config, @)
       })
 
       @framework.deviceManager.on 'discover', () =>
@@ -219,7 +219,12 @@ module.exports = (env) ->
         return @hubInstance.getCurrentActivity()
 
     registerStateListener: (hubIP, activityId, callback) =>
-      @hubStateListeners[activityId] = callback
+      tempArray = []
+      if @hubStateListeners[activityId] isnt undefined
+        env.logger.debug("#{@hubStateListeners[activityId].length}")
+        tempArray = @hubStateListeners[activityId]
+      tempArray.push callback
+      @hubStateListeners[activityId] = tempArray
       env.logger.debug("state listener registered")
 
     handleStateDigest: (stateDigest) =>
@@ -229,10 +234,12 @@ module.exports = (env) ->
 
       if (activityStatus == 2)
         for k, v of @hubStateListeners
-          v(activityId)
+          for index, act of @hubStateListeners[k]
+            act(activityId)
       if (activityStatus == 0)
         for k, v of @hubStateListeners
-          v("-1")
+          for index, act of @hubStateListeners[k]
+            act("-1")
 
     getHubInstance: (hubIP) ->
       if (@pendingConnection)
@@ -393,13 +400,22 @@ module.exports = (env) ->
           return @requestPromise
       throw new Error("No button with the id #{buttonId} found")
 
-  class HarmonyHubActivitiesRunning extends env.devices.PresenceSensor
+  class HarmonyHubActivitiesPresence extends env.devices.PresenceSensor
     constructor: (@config, @plugin) ->
       @name = @config.name
       @id = @config.id
       @hubIP = @config.hubIP
+      @activityIds = @config.activities
+
+      for singleActivity in @activityIds
+        env.logger.debug("registering for activity #{singleActivity.activityId}")
+        @plugin.registerStateListener @hubIP, singleActivity.activityId, @onStartActivityFinished.bind(this)
 
       super(@config)
+
+    onStartActivityFinished: (startedActivityId) ->
+      env.logger.debug("#{@name} handling startActivityFinished")
+      env.logger.debug("ID: #{startedActivityId}")
       
     destroy: () ->
       @requestPromise.cancel() if @requestPromise?
