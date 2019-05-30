@@ -221,7 +221,6 @@ module.exports = (env) ->
     registerStateListener: (hubIP, activityId, callback) =>
       tempArray = []
       if @hubStateListeners[activityId] isnt undefined
-        env.logger.debug("#{@hubStateListeners[activityId].length}")
         tempArray = @hubStateListeners[activityId]
       tempArray.push callback
       @hubStateListeners[activityId] = tempArray
@@ -414,8 +413,23 @@ module.exports = (env) ->
       super(@config)
 
     onStartActivityFinished: (startedActivityId) ->
-      env.logger.debug("#{@name} handling startActivityFinished")
-      env.logger.debug("ID: #{startedActivityId}")
+      result = off
+      if startedActivityId isnt "-1"
+        for act in @activityIds
+          if act.activityId is startedActivityId
+            result = on
+      @_setPresence(result)
+
+    getPresence: () ->
+      return @plugin.getCurrentActivity(@hubIP)
+        .then (result) =>
+          @_presence = off
+          for act in @activityIds
+            if act.activityId is result
+              @_presence = on
+          env.logger.debug("current activity is #{result} at #{@name}")
+          return @_presence
+
       
     destroy: () ->
       @requestPromise.cancel() if @requestPromise?
