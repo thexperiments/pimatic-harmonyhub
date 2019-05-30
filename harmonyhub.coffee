@@ -154,6 +154,26 @@ module.exports = (env) ->
                   'pimatic-harmonyhub', "#{deviceConfig.name}", deviceConfig
                 )
 
+            if @config.scanforpowerswitches is true
+              env.logger.debug("Getting available power switches for hub@{@hubIP}")
+              hubInstance.getActivities().then (activities) =>
+
+                env.logger.debug("received activities: #{JSON.stringify(activities)}")
+
+                for currentActivity in activities
+                  env.logger.debug("found activity #{currentActivity.label} on hub@#{@hubIP}")
+                  deviceConfig =
+                        class: "HarmonyHubPowerSwitch"
+                        name: "PowerSwitch for #{currentActivity.label}"
+                        id: "powerswitch-#{@hubIP.replace(/\./g,"-")}-#{currentActivity.label.replace(/ /g, "-").toLowerCase()}"
+                        hubIP: @hubIP
+                        activityId: currentActivity.id
+
+                  #notify about the discovered device
+                  @framework.deviceManager.discoveredDevice(
+                    'pimatic-harmonyhub', "#{deviceConfig.name}", deviceConfig
+                  )
+
         @HarmonyHubDiscoverInstance.start()
 
         stopDiscovery = () =>
