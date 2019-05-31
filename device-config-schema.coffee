@@ -64,12 +64,42 @@ module.exports = {
               description: "ID of the activity to trigger (-1 = off)"
               type: "string"
   },
-  HarmonyHubActivitiesRunning: {
-    title: "HarmonyHubActivitiesRunning config options"
+  HarmonyHubActivitiesPresenceDevice: {
+    title: "HarmonyHubActivitiesPresenceDevice config options"
     type: "object"
     properties:
       hubIP:
         description: "IP of the Harmony Hub"
         type: "string"
+      activities:
+        description: "Activities to look for"
+        type: "array"
+        default: []
+        format: "table"
+        items:
+          type: "object"
+          properties:
+            id:
+              type: "string"
+            text:
+              type: "string"
+            activityId:
+              description: "Activitiy to watch"
+              type: "string"
+      ignoredActivities:
+        description: "Activities that have no influence on presence state"
+        type: "array"
+        default: []
+        format: "table"
+        items:
+          type: "object"
+          properties:
+            id:
+              type: "string"
+            text:
+              type: "string"
+            activityId:
+              description: "Activitiy to ignore"
+              type: "string"
   }
 }

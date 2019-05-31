@@ -198,8 +198,6 @@ module.exports = (env) ->
                     id: "activitspresence-for-#{currentActivity.label}.replace(/ /g, "-").toLowerCase()-#{@hubIP.replace(/\./g,"-")}"
                     hubIP: @hubIP
 
-                  env.logger.debug("#{currentActivity.label}.toLowerCase()")
-
                   singleActivity =
                     id: currentActivity.label.replace(/ /g, "-").toLowerCase()
                     text: "#{currentActivity.label}"
@@ -453,6 +451,7 @@ module.exports = (env) ->
       @id = @config.id
       @hubIP = @config.hubIP
       @activityIds = @config.activities
+      @ignoredActivityIds = @config.ignoredActivities
 
       for singleActivity in @activityIds
         env.logger.debug("registering for activity #{singleActivity.activityId}")
@@ -463,6 +462,9 @@ module.exports = (env) ->
     onStartActivityFinished: (startedActivityId) ->
       result = off
       if startedActivityId isnt "-1"
+        for act in @ignoredActivityIds
+          if act.activityId is startedActivityId
+            return
         for act in @activityIds
           if act.activityId is startedActivityId
             result = on

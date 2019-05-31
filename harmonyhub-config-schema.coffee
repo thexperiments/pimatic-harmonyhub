@@ -23,4 +23,8 @@ module.exports = {
       description: "Autodiscover all ActivitiesButtonsDevices"
       type: "boolean"
       default: true
+    scanforactivitiespresencedevices:
+      description: "Autodiscover all ActivitiesPresence"
+      type: "boolean"
+      default: true
 }
