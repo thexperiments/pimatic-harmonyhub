@@ -64,10 +64,10 @@ module.exports = (env) ->
           return new HarmonyHubActivitiesButtonsDevice(config, @)
       })
 
-      @framework.deviceManager.registerDeviceClass("HarmonyHubActivitiesPresence", {
-        configDef: deviceConfigDef.HarmonyHubActivitiesPresence,
+      @framework.deviceManager.registerDeviceClass("HarmonyHubActivitiesPresenceDevice", {
+        configDef: deviceConfigDef.HarmonyHubActivitiesPresenceDevice,
         createCallback: (config, lastState) =>
-          return new HarmonyHubActivitiesPresence(config, @)
+          return new HarmonyHubActivitiesPresenceDevice(config, @)
       })
 
       @framework.deviceManager.on 'discover', () =>
@@ -137,6 +137,7 @@ module.exports = (env) ->
                       name: "Acitvities on #{@hubIP}"
                       id: "activities-#{@hubIP.replace(/\./g,"-").toLowerCase()}"
                       hubIP: @hubIP
+
                 buttonsArray = []
 
                 for currentActivity in activities
@@ -155,7 +156,7 @@ module.exports = (env) ->
                 )
 
             if @config.scanforpowerswitches is true
-              env.logger.debug("Getting available power switches for hub@{@hubIP}")
+              env.logger.debug("Getting available power switches for hub@#{@hubIP}")
               hubInstance.getActivities().then (activities) =>
 
                 env.logger.debug("received activities: #{JSON.stringify(activities)}")
@@ -173,6 +174,53 @@ module.exports = (env) ->
                   @framework.deviceManager.discoveredDevice(
                     'pimatic-harmonyhub', "#{deviceConfig.name}", deviceConfig
                   )
+
+            if @config.scanforactivitiespresencedevices is true
+              env.logger.debug("Getting available presence devices for hub@#{@hubIP}")
+              hubInstance.getActivities().then (activities) =>
+
+                env.logger.debug("received activities: #{JSON.stringify(activities)}")
+
+                allActivitiesConfig =
+                      class: "HarmonyHubActivitiesPresenceDevice"
+                      name: "ActivitiesPresence for #{@hubIP}"
+                      id: "activitspresence-for-#{@hubIP.replace(/\./g,"-")}"
+                      hubIP: @hubIP
+
+                activityIds = []
+
+                for currentActivity in activities
+                  singleAct = []
+
+                  singleConfig =
+                    class: "HarmonyHubActivitiesPresenceDevice"
+                    name: "ActivitiesPresence for #{currentActivity.label} at #{@hubIP}"
+                    id: "activitspresence-for-#{currentActivity.label}.replace(/ /g, "-").toLowerCase()-#{@hubIP.replace(/\./g,"-")}"
+                    hubIP: @hubIP
+
+                  env.logger.debug("#{currentActivity.label}.toLowerCase()")
+
+                  singleActivity =
+                    id: currentActivity.label.replace(/ /g, "-").toLowerCase()
+                    text: "#{currentActivity.label}"
+                    activityId: currentActivity.id
+
+                  singleAct.push(singleActivity)
+                  singleConfig.activities = singleAct
+
+                  if currentActivity.id isnt "-1"
+                    activityIds.push(singleActivity)
+                    #notify about the discovered device
+                    @framework.deviceManager.discoveredDevice(
+                      'pimatic-harmonyhub', "#{singleConfig.name}", singleConfig
+                    )
+
+                allActivitiesConfig.activities = activityIds
+
+                #notify about the discovered device
+                @framework.deviceManager.discoveredDevice(
+                  'pimatic-harmonyhub', "#{allActivitiesConfig.name}", allActivitiesConfig
+                )
 
         @HarmonyHubDiscoverInstance.start()
 
@@ -399,7 +447,7 @@ module.exports = (env) ->
           return @requestPromise
       throw new Error("No button with the id #{buttonId} found")
 
-  class HarmonyHubActivitiesPresence extends env.devices.PresenceSensor
+  class HarmonyHubActivitiesPresenceDevice extends env.devices.PresenceSensor
     constructor: (@config, @plugin) ->
       @name = @config.name
       @id = @config.id
