@@ -11,4 +11,20 @@ module.exports = {
       description: "Flag for activating debug output"
       type: "boolean"
       default: false
+    scanforpowerswitches:
+      description: "Autodiscover all PowerSwitches"
+      type: "boolean"
+      default: true
+    scanforbuttonsdevices:
+      description: "Autodiscover all ButtonsDevices"
+      type: "boolean"
+      default: true
+    scanforactivitybuttonsdevices:
+      description: "Autodiscover all ActivitiesButtonsDevices"
+      type: "boolean"
+      default: true
+    scanforactivitiespresencedevices:
+      description: "Autodiscover all ActivitiesPresence"
+      type: "boolean"
+      default: true
 }

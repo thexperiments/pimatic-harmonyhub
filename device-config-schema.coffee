@@ -4,24 +4,12 @@ module.exports = {
     title: "HarmonyHubPowerSwitch config options"
     type: "object"
     properties:
-      HubIP:
+      hubIP:
         description: "IP of the Harmony Hub"
         type: "string"
-      commandType:
-        description: "Type of code to send (IRCommand etc.)"
+      activityId:
+        description: "id of the harmony activity"
         type: "string"
-        default: "IRCommand"
-      onCommand:
-        description: "Code to send for ON state"
-        type: "string"
-        default: "PowerOn"
-      offCommand:
-        description: "Code to send for OFF state"
-        type: "string"
-        default: "PowerOff"
-      deviceId:
-        description: "ID of device to control"
-        type: "number"
   },
   HarmonyHubButtonsDevice: {
     title: "HarmonyHubButtonsDevice config options"
@@ -74,6 +62,44 @@ module.exports = {
               type: "string"
             activityId:
               description: "ID of the activity to trigger (-1 = off)"
+              type: "string"
+  },
+  HarmonyHubActivitiesPresenceDevice: {
+    title: "HarmonyHubActivitiesPresenceDevice config options"
+    type: "object"
+    properties:
+      hubIP:
+        description: "IP of the Harmony Hub"
+        type: "string"
+      activities:
+        description: "Activities to look for"
+        type: "array"
+        default: []
+        format: "table"
+        items:
+          type: "object"
+          properties:
+            id:
+              type: "string"
+            text:
+              type: "string"
+            activityId:
+              description: "Activitiy to watch"
+              type: "string"
+      ignoredActivities:
+        description: "Activities that have no influence on presence state"
+        type: "array"
+        default: []
+        format: "table"
+        items:
+          type: "object"
+          properties:
+            id:
+              type: "string"
+            text:
+              type: "string"
+            activityId:
+              description: "Activitiy to ignore"
               type: "string"
   }
 }
