@@ -75,5 +75,13 @@ module.exports = {
             activityId:
               description: "ID of the activity to trigger (-1 = off)"
               type: "string"
+  },
+  HarmonyHubActivitiesRunning: {
+    title: "HarmonyHubActivitiesRunning config options"
+    type: "object"
+    properties:
+      hubIP:
+        description: "IP of the Harmony Hub"
+        type: "string"
   }
 }
